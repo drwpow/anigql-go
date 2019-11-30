@@ -1,0 +1,19 @@
+type Studio {
+  id: ID!
+  city: String
+  country: String!
+  # films: [FilmEdge]!
+  foundedYear: Int!
+  # founders: [PersonEdge]!
+  name: String!
+}
+
+type StudioEdge {
+  cursor: String!
+  node: Studio
+}
+
+type StudioConnection {
+  edges: [StudioEdge]!
+  pageInfo: PageInfo!
+}

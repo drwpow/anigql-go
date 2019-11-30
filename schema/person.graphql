@@ -1,0 +1,25 @@
+type Person {
+  id: ID!
+  birthDay: Int
+  birthMonth: Int
+  birthYear: Int
+  deathDay: Int
+  deathMonth: Int
+  deathYear: Int
+  description: String
+  # films: [FilmEdge]!
+  location: String
+  name: String!
+  surname: String!
+  website: String
+}
+
+type PersonEdge {
+  cursor: String!
+  node: Person
+}
+
+type PersonConnection {
+  edges: [PersonEdge]!
+  pageInfo: PageInfo!
+}

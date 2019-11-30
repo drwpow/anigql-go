@@ -1,0 +1,27 @@
+type FrameSequence {
+  id: ID!
+  # artists: [PersonEdge]!
+  # film: Film!
+  # frames: [Frame]!
+  # keyframeArtists: [PersonEdge]!
+  notes: String
+  order: Int!
+}
+
+type FrameSequenceEdge {
+  cursor: String!
+  node: FrameSequence
+}
+
+type FrameSequenceConnection {
+  edges: [FrameSequenceEdge]!
+  pageInfo: PageInfo!
+}
+
+type Frame {
+  # artists: [PersonEdge]
+  image: String!
+  keyframe: Boolean!
+  notes: String
+  order: Int
+}

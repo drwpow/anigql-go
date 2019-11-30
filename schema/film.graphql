@@ -1,0 +1,26 @@
+type Film {
+  id: ID!
+  # "Artists includes keyframe artists"
+  # artists: [PersonEdge]!
+  # composer: Person
+  # director: Person
+  # frameSequences: [FrameSequenceEdge]!
+  # keyframeArtists: [PersonEdge]!
+  # releases: [ReleaseEdge]!
+  releaseYear: Int!
+  # studio: Studio!
+  title: String!
+  titleIntl: Map!
+  website: String
+  # writers: [PersonEdge]
+}
+
+type FilmEdge {
+  cursor: String!
+  node: Film
+}
+
+type FilmConnection {
+  edges: [FilmEdge]!
+  pageInfo: PageInfo!
+}

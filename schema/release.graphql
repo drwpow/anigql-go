@@ -1,0 +1,21 @@
+type Release {
+  id: ID!
+  area: String!
+  # film: Film
+  format: String!
+  # notes: String
+  releaseDay: Int
+  releaseMonth: Int
+  releaseYear: Int!
+  runtime: Int
+}
+
+type ReleaseEdge {
+  cursor: String!
+  node: Release
+}
+
+type ReleaseConnection {
+  edges: [ReleaseEdge]!
+  pageInfo: PageInfo!
+}
