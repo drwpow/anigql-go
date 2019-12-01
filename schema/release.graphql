@@ -1,5 +1,5 @@
 type Release {
-  id: ID!
+  ID: String!
   area: String!
   # film: Film
   format: String!
@@ -8,14 +8,4 @@ type Release {
   releaseMonth: Int
   releaseYear: Int!
   runtime: Int
-}
-
-type ReleaseEdge {
-  cursor: String!
-  node: Release
-}
-
-type ReleaseConnection {
-  edges: [ReleaseEdge]!
-  pageInfo: PageInfo!
 }

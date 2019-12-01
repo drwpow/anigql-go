@@ -1,156 +1,299 @@
-package ani_gql
+package anigql
 
 import (
 	"context"
-	"os"
 
 	"cloud.google.com/go/firestore"
-	"github.com/dangodev/ani-gql/internal/models"
-	"github.com/joho/godotenv"
+	"github.com/dangodev/anigql/internal/db"
+	"github.com/dangodev/anigql/internal/models"
+	"github.com/dangodev/anigql/internal/utils"
+	"github.com/imdario/mergo"
 )
 
-func init() {
-	godotenv.Load()
-}
-
 type Resolver struct {
-	films *models.FilmConnection
+	addDirectorToFilm *models.Film
+	addIntlTitle      *models.Film
+	addPerson         *models.Person
+	film              *models.Film
+	films             []models.Film
+	people            []models.Person
+	person            *models.Person
 }
 
 type queryResolver struct{ *Resolver }
 
+type mutationResolver struct{ *Resolver }
+
+func (r *Resolver) Film() FilmResolver {
+	return &filmResolver{r}
+}
+
+func (r *Resolver) Frame() FrameResolver {
+	return &frameResolver{r}
+}
+func (r *Resolver) FrameSequence() FrameSequenceResolver {
+	return &frameSequenceResolver{r}
+}
+func (r *Resolver) Mutation() MutationResolver {
+	return &mutationResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
 }
-
-/* Films (and resolvers) */
-type filmResolver struct{ *Resolver }
-
-func parseFilm(data *firestore.DocumentSnapshot) *models.Film {
-	film := &models.Film{}
-	dataErr := data.DataTo(film)
-	if dataErr != nil {
-		panic(dataErr)
-	}
-	return film
+func (r *Resolver) Release() ReleaseResolver {
+	return &releaseResolver{r}
 }
 
-func (r *queryResolver) Films(ctx context.Context, first int, after *string) (*FilmConnection, error) {
-	client, _ := firestore.NewClient(ctx, os.Getenv("FIRESTORE_PROJECT_ID"))
+type frameResolver struct{ *Resolver }
+
+func (r *frameResolver) Image(ctx context.Context, obj *models.Frame) (string, error) {
+	panic("not implemented")
+}
+
+type frameSequenceResolver struct{ *Resolver }
+
+func (r *frameSequenceResolver) ID(ctx context.Context, obj *models.FrameSequence) (string, error) {
+	panic("not implemented")
+}
+
+func (r *mutationResolver) AddFilm(ctx context.Context, id string, directorIDs []*string, releaseYear *int, title string) (*models.Film, error) {
+	client, _ := db.Client(ctx)
 	defer client.Close()
 
-	query := client.Collection("films").Limit(first)
-	if first > 50 {
-		query = query.Limit(50)
+	directors := []models.Person{}
+	if directorIDs != nil {
+		for _, directorID := range directorIDs {
+			var director *models.Person
+			query, _ := client.Collection("people").Doc(*directorID).Get(ctx)
+			query.DataTo(&director)
+			if director != nil {
+				director.ID = *directorID
+				directors = append(directors, *director)
+			}
+		}
 	}
-	if after != nil {
-		query = query.StartAfter(after)
+
+	film := &models.Film{
+		Directors:   directors,
+		ReleaseYear: releaseYear,
+		Title:       title,
 	}
-	films, err := query.Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
+
+	_, mutationErr := client.Collection("films").Doc(id).Set(ctx, film)
+	if mutationErr != nil {
+		return nil, mutationErr
 	}
-	edges := make([]*FilmEdge, len(films))
-	for i, data := range films {
-		film := parseFilm(data)
-		edges[i] = &FilmEdge{Node: film, Cursor: film.ID}
+	film.ID = id
+
+	return film, nil
+}
+
+func (r *mutationResolver) AddPerson(ctx context.Context, id string, birthDay *int, birthMonth *int, birthYear *int, deathDay *int, deathMonth *int, deathYear *int, description *string, kanji *string, location *string, name string, surname string, website *string) (*models.Person, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	person := &models.Person{
+		BirthDay:    birthDay,
+		BirthMonth:  birthMonth,
+		BirthYear:   birthYear,
+		DeathDay:    deathDay,
+		DeathMonth:  deathMonth,
+		DeathYear:   deathYear,
+		Description: description,
+		Kanji:       kanji,
+		Location:    location,
+		Name:        name,
+		Surname:     surname,
+		Website:     website,
 	}
-	pageInfo := &PageInfo{
-		EndCursor:   edges[len(edges)-1].Cursor,
-		HasNextPage: false,
-		StartCursor: edges[0].Cursor,
+
+	_, mutationErr := client.Collection("people").Doc(id).Set(ctx, person)
+	if mutationErr != nil {
+		return nil, mutationErr
 	}
-	return &FilmConnection{
-		Edges:    edges,
-		PageInfo: pageInfo,
+	person.ID = id
+
+	return person, nil
+}
+
+func (r *mutationResolver) AddIntlTitle(ctx context.Context, filmID string, title Country) (*models.Film, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	var film *models.Film
+	filmQuery, filmErr := client.Collection("films").Doc(filmID).Get(ctx)
+	if filmErr != nil {
+		return nil, filmErr
+	}
+	filmQuery.DataTo(&film)
+	film.ID = filmID
+	mergo.Merge(&film.TitleIntl, title)
+
+	_, mutationErr := client.Collection("films").Doc(filmID).Set(ctx, &models.Film{TitleIntl: film.TitleIntl}, firestore.Merge([]string{"titleIntl"}))
+	if mutationErr != nil {
+		return nil, mutationErr
+	}
+
+	return film, nil
+}
+
+func (r *mutationResolver) AddDirectorToFilm(ctx context.Context, personID string, filmID string) (*models.Film, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	// query both
+	var person *models.Person
+	personQuery, personErr := client.Collection("people").Doc(personID).Get(ctx)
+	if personErr != nil {
+		return nil, personErr
+	}
+	personQuery.DataTo(&person)
+	person.ID = personID
+
+	var film *models.Film
+	filmQuery, filmErr := client.Collection("films").Doc(filmID).Get(ctx)
+	if filmErr != nil {
+		return nil, filmErr
+	}
+	filmQuery.DataTo(&film)
+	film.ID = filmID
+
+	// set
+	directors := []models.Person{*person}
+	if len(film.Directors) > 0 {
+		alreadyAdded := false
+		directors = make([]models.Person, len(film.Directors))
+		for i, director := range film.Directors {
+			if director.ID == personID {
+				alreadyAdded = true
+			}
+			directors[i] = director
+		}
+		if alreadyAdded == false {
+			directors = append(directors, *person)
+		}
+	}
+	film.Directors = directors
+	_, mutationErr := client.Collection("films").Doc(filmID).Set(ctx, film, firestore.Merge([]string{"directors"}))
+	if mutationErr != nil {
+		return nil, mutationErr
+	}
+	return film, nil
+}
+
+type filmResolver struct{ *Resolver }
+
+func (r *queryResolver) Film(ctx context.Context, id string) (*models.Film, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	var film *models.Film
+	query, queryErr := client.Collection("film").Doc(id).Get(ctx)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	query.DataTo(&film)
+	film.ID = id
+
+	return film, nil
+}
+
+func (r *filmResolver) TitleIntl(ctx context.Context, obj *models.Film) (*TitleIntl, error) {
+	return &TitleIntl{
+		Au: obj.TitleIntl.Au,
+		Br: obj.TitleIntl.Br,
+		Ca: obj.TitleIntl.Ca,
+		Cn: obj.TitleIntl.Cn,
+		Es: obj.TitleIntl.Es,
+		Fr: obj.TitleIntl.Fr,
+		Gb: obj.TitleIntl.Gb,
+		It: obj.TitleIntl.It,
+		Jp: obj.TitleIntl.Jp,
+		Mx: obj.TitleIntl.Mx,
+		Nz: obj.TitleIntl.Nz,
+		Tr: obj.TitleIntl.Tr,
+		Ua: obj.TitleIntl.Ua,
+		Us: obj.TitleIntl.Us,
 	}, nil
 }
 
-/* Release */
+func (r *queryResolver) Films(ctx context.Context, orderBy []*FilmOrderFields, yearStart *int, yearEnd *int) ([]*models.Film, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	// order/filtering
+	root := client.Collection("films")
+	var query firestore.Query
+	if len(orderBy) > 0 {
+		for _, order := range orderBy {
+			query = root.OrderBy(utils.OrderByName(string(*order)), utils.OrderByDirection(string(*order)))
+		}
+	} else {
+		query = root.OrderBy("releaseYear", firestore.Asc)
+	}
+	if yearStart != nil && *yearStart > 0 {
+		query = root.Where("releaseYear", ">=", yearStart)
+	}
+	if yearEnd != nil && *yearEnd > 0 {
+		query = root.Where("releaseYear", "<=", yearEnd)
+	}
+	data, queryErr := query.Documents(ctx).GetAll()
+	if queryErr != nil {
+		return nil, queryErr
+	}
+
+	var films []*models.Film
+	for _, data := range data {
+		var film *models.Film
+		parseErr := data.DataTo(&film)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		films = append(films, film)
+	}
+
+	return films, nil
+}
+
+func (r *queryResolver) People(ctx context.Context, orderBy []*PeopleOrderFields) ([]*models.Person, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	query, queryErr := client.Collection("people").Documents(ctx).GetAll()
+	if queryErr != nil {
+		return nil, queryErr
+	}
+
+	var people []*models.Person
+	for _, data := range query {
+		var person *models.Person
+		parseErr := data.DataTo(&person)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		people = append(people, person)
+	}
+
+	return people, nil
+}
+
+func (r *queryResolver) Person(ctx context.Context, id string) (*models.Person, error) {
+	client, _ := db.Client(ctx)
+	defer client.Close()
+
+	var person *models.Person
+	query, queryErr := client.Collection("people").Doc(id).Get(ctx)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	query.DataTo(&person)
+	person.ID = id
+
+	return person, nil
+}
+
 type releaseResolver struct{ *Resolver }
 
-func (r *releaseResolver) Notes(ctx context.Context, obj *models.Release) (*string, error) {
-	return nil, nil
-}
-
-/* Studio */
-type studioResolver struct{ *Resolver }
-
-func (r *studioResolver) FoundedYear(ctx context.Context, obj *models.Studio) (int, error) {
-	return 1960, nil
-}
-
-/*
-func (r *filmResolver) Artists(ctx context.Context, obj *models.Film) ([]*PersonEdge, error) {
+func (r *releaseResolver) ID(ctx context.Context, obj *models.Release) (string, error) {
 	panic("not implemented")
 }
-func (r *filmResolver) Composer(ctx context.Context, obj *models.Film) (*models.Person, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) Director(ctx context.Context, obj *models.Film) (*models.Person, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) FrameSequences(ctx context.Context, obj *models.Film) ([]*FrameSequenceEdge, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) KeyframeArtists(ctx context.Context, obj *models.Film) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) Releases(ctx context.Context, obj *models.Film) ([]*ReleaseEdge, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) Studio(ctx context.Context, obj *models.Film) (*models.Studio, error) {
-	panic("not implemented")
-}
-func (r *filmResolver) Writers(ctx context.Context, obj *models.Film) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-
-func (r *frameResolver) Artists(ctx context.Context, obj *models.Frame) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-func (r *frameResolver) Order(ctx context.Context, obj *models.Frame) (*int, error) {
-	panic("not implemented")
-}
-
-func (r *frameSequenceResolver) Artists(ctx context.Context, obj *models.FrameSequence) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-func (r *frameSequenceResolver) Film(ctx context.Context, obj *models.FrameSequence) (*models.Film, error) {
-	panic("not implemented")
-}
-func (r *frameSequenceResolver) Frames(ctx context.Context, obj *models.FrameSequence) ([]*models.Frame, error) {
-	panic("not implemented")
-}
-func (r *frameSequenceResolver) KeyframeArtists(ctx context.Context, obj *models.FrameSequence) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-
-func (r *personResolver) Films(ctx context.Context, obj *models.Person) ([]*FilmEdge, error) {
-	panic("not implemented")
-}
-
-func (r *releaseResolver) Film(ctx context.Context, obj *models.Release) (*models.Film, error) {
-	panic("not implemented")
-}
-func (r *releaseResolver) Notes(ctx context.Context, obj *models.Release) (*string, error) {
-	panic("not implemented")
-}
-
-
-func (r *studioResolver) City(ctx context.Context, obj *models.Studio) (*string, error) {
-	panic("not implemented")
-}
-func (r *studioResolver) Country(ctx context.Context, obj *models.Studio) (string, error) {
-	panic("not implemented")
-}
-func (r *studioResolver) Films(ctx context.Context, obj *models.Studio) ([]*FilmEdge, error) {
-	panic("not implemented")
-}
-func (r *studioResolver) FoundedYear(ctx context.Context, obj *models.Studio) (*string, error) {
-	panic("not implemented")
-}
-func (r *studioResolver) Founders(ctx context.Context, obj *models.Studio) ([]*PersonEdge, error) {
-	panic("not implemented")
-}
-*/

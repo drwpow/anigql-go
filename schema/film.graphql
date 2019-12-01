@@ -1,26 +1,67 @@
+"Film is a work of animation of any length. Could be feature-length; could be television-length."
 type Film {
-  id: ID!
+  "A unique ID for this film"
+  ID: String!
   # "Artists includes keyframe artists"
   # artists: [PersonEdge]!
-  # composer: Person
-  # director: Person
+  "The composers of the film"
+  composers: [Person]!
+  "The directors of the film"
+  directors: [Person]!
   # frameSequences: [FrameSequenceEdge]!
   # keyframeArtists: [PersonEdge]!
   # releases: [ReleaseEdge]!
+  "The earliest release date of the film"
   releaseYear: Int!
   # studio: Studio!
+  "The original title of the film"
   title: String!
-  titleIntl: Map!
+  "The film’s localized title in foreign countries"
+  titleIntl: TitleIntl!
+  "The website of the film"
   website: String
-  # writers: [PersonEdge]
+  "The writers of the film"
+  writers: [Person]!
 }
 
-type FilmEdge {
-  cursor: String!
-  node: Film
+enum FilmOrderFields {
+  releaseYear_ASC
+  releaseYear_DESC
+  title_ASC
+  title_DESC
 }
 
-type FilmConnection {
-  edges: [FilmEdge]!
-  pageInfo: PageInfo!
+"TitleIntl is a map of 2-letter ISO country codes of all a film’s titles."
+type TitleIntl {
+  au: String
+  br: String
+  ca: String
+  cn: String
+  es: String
+  fr: String
+  gb: String
+  it: String
+  jp: String
+  mx: String
+  nz: String
+  tr: String
+  ua: String
+  us: String!
+}
+
+input Country {
+  au: String
+  br: String
+  ca: String
+  cn: String
+  es: String
+  fr: String
+  gb: String
+  it: String
+  jp: String
+  mx: String
+  nz: String
+  tr: String
+  ua: String
+  us: String!
 }

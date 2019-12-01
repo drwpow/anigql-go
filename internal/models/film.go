@@ -1,11 +1,5 @@
 package models
 
-type PageInfo struct {
-	EndCursor   string
-	HasNextPage bool
-	StartCursor string
-}
-
 /* Film is difficult. What is a film? If some of a film’s scenes were censored
 in a certain country, does that constitute one, or two films? If a director’s
 cut was made in addition to the standard theatrical release, is that a
@@ -20,19 +14,29 @@ For that reason, “Frames” are considered a core part of the film, but things
 like release date and run time are considered a part of a “Release.”
 */
 type Film struct {
-	ID          string                 `firestore:"id"`
-	ReleaseYear int                    `firestore:"releaseYear"`
-	Title       string                 `firestore:"title"`
-	TitleIntl   map[string]interface{} `firestore:"titleIntl"`
-	Website     string                 `firestore:"website"`
+	ID          string
+	Composers   []Person  `firestore:"composers"`
+	Directors   []Person  `firestore:"directors"`
+	ReleaseYear *int      `firestore:"releaseYear"`
+	Title       string    `firestore:"title"`
+	TitleIntl   TitleIntl `firestore:"titleIntl"`
+	Website     string    `firestore:"website"`
+	Writers     []Person  `firestore:"writers"`
 }
 
-type FilmEdge struct {
-	Node   *Film
-	Cursor string
-}
-
-type FilmConnection struct {
-	Edges    []*FilmEdge
-	PageInfo *PageInfo
+type TitleIntl struct {
+	Au *string `firestore:"au"`
+	Br *string `firestore:"br"`
+	Ca *string `firestore:"ca"`
+	Cn *string `firestore:"cn"`
+	Es *string `firestore:"es"`
+	Fr *string `firestore:"fr"`
+	Gb *string `firestore:"gb"`
+	It *string `firestore:"it"`
+	Jp *string `firestore:"jp"`
+	Mx *string `firestore:"mx"`
+	Nz *string `firestore:"nz"`
+	Tr *string `firestore:"tr"`
+	Ua *string `firestore:"ua"`
+	Us string  `firestore:"us"`
 }

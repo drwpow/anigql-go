@@ -1,0 +1,3 @@
+runtime: go113
+main: ./server/server.go
+service: anigql-readonly

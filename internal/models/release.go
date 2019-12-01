@@ -14,7 +14,6 @@ It is possible for a film not to have any releases, too. Either that means
 the film is in progress, or it was a notable film that was cancelled.
 */
 type Release struct {
-	ID           string `firestore:"id"`
 	Area         string `firestore:"area"`
 	Format       string `firestore:"format"`
 	ReleaseDay   int    `firestore:"releaseDay"`

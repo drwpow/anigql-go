@@ -3,7 +3,6 @@ package models
 /* A frame sequence is a collection of frames that typically make up a “scene.”
  */
 type FrameSequence struct {
-	ID          string `firestore:"id"`
 	Notes       string `firestore:"notes"`
 	Order       int    `firestore:"order"`
 	SakugaBooru string `firestore:"sakugaBooru"`
@@ -18,7 +17,6 @@ sequence).
 A frame may be any speed, and framerate for a film shouldn’t be assumed.
 */
 type Frame struct {
-	Image    string `firestore:"image"`
 	Keyframe bool   `firestore:"keyframe"`
 	Notes    string `firestore:"notes"`
 	Order    int    `firestore:"order"`

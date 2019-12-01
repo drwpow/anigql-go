@@ -9,17 +9,17 @@ exec:
   filename: generated.go
 models:
   Film:
-    model: github.com/dangodev/ani-gql/internal/models.Film
+    model: github.com/dangodev/anigql/internal/models.Film
   Frame:
-    model: github.com/dangodev/ani-gql/internal/models.Frame
+    model: github.com/dangodev/anigql/internal/models.Frame
   FrameSequence:
-    model: github.com/dangodev/ani-gql/internal/models.FrameSequence
+    model: github.com/dangodev/anigql/internal/models.FrameSequence
   Person:
-    model: github.com/dangodev/ani-gql/internal/models.Person
+    model: github.com/dangodev/anigql/internal/models.Person
   Release:
-    model: github.com/dangodev/ani-gql/internal/models.Release
+    model: github.com/dangodev/anigql/internal/models.Release
   Studio:
-    model: github.com/dangodev/ani-gql/internal/models.Studio
+    model: github.com/dangodev/anigql/internal/models.Studio
 resolver:
   filename: resolver.go
   type: Resolver

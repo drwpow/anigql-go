@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/99designs/gqlgen/handler"
-	anigql "github.com/dangodev/ani-gql"
+	"github.com/dangodev/anigql"
 )
 
 const defaultPort = "8080"
